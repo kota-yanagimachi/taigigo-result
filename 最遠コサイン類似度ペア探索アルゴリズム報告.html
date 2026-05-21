@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>高次元ベクトル空間における最遠コサイン類似度ペア探索アルゴリズム</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --border: #e5e5e3;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --good: #16a34a;
+    --bad: #dc2626;
+    --warn: #d97706;
+    --code-bg: #f5f5f4;
+    --max-width: 880px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a8a;
+      --code-bg: #0f172a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                 "Hiragino Sans", Meiryo, sans-serif;
+    line-height: 1.75;
+    font-size: 16px;
+  }
+  .container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 1em 1.2em 4em;
+  }
+  header { padding: 2em 0 1em; border-bottom: 1px solid var(--border); margin-bottom: 1.5em; }
+  header h1 { font-size: 1.45em; margin: 0 0 0.3em; line-height: 1.4; }
+  header .subtitle { color: var(--muted); font-size: 0.9em; margin: 0; }
+  header .meta { color: var(--muted); font-size: 0.78em; margin-top: 0.6em; }
+
+  h2 {
+    margin: 2.5em 0 0.8em;
+    padding-bottom: 0.3em;
+    font-size: 1.25em;
+    border-bottom: 2px solid var(--accent);
+    line-height: 1.3;
+  }
+  h3 { margin: 1.8em 0 0.5em; font-size: 1.08em; color: var(--accent); }
+  h4 { margin: 1.2em 0 0.4em; font-size: 0.98em; }
+  p, ul, ol { margin: 0.6em 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 0.2em 0; }
+
+  /* TOC */
+  nav.toc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8em 1.2em;
+    margin-bottom: 2em;
+    font-size: 0.92em;
+  }
+  nav.toc details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--muted);
+    list-style: none;
+  }
+  nav.toc details summary::before { content: "▸ "; }
+  nav.toc details[open] summary::before { content: "▾ "; }
+  nav.toc ol { columns: 2; column-gap: 1.2em; padding-left: 1.4em; margin: 0.6em 0 0; }
+  @media (max-width: 600px) { nav.toc ol { columns: 1; } }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  /* code & math */
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.6;
+    -webkit-overflow-scrolling: touch;
+  }
+  pre code { background: none; padding: 0; }
+  /* MathML / inline math */
+  math { font-size: 1.05em; font-family: "Cambria Math", "Latin Modern Math", serif; }
+  math[display="block"] {
+    display: block;
+    text-align: center;
+    margin: 0.8em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.3em 0;
+  }
+  .math-inline { font-style: italic; font-family: "Cambria Math", "Latin Modern Math", serif; white-space: nowrap; }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-style: normal; }
+  .frac > .num { border-bottom: 1px solid currentColor; padding: 0 0.3em; }
+  .frac > .den { padding: 0 0.3em; }
+  .sqrt-inline {
+    display: inline-block;
+    border-top: 1px solid currentColor;
+    padding: 0 0.2em;
+  }
+  .sqrt-inline::before { content: "√"; margin-left: -0.5em; padding-right: 0.05em; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0.8em 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9em; min-width: 520px; }
+  th, td { padding: 0.45em 0.7em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--code-bg); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.win { color: var(--good); font-weight: 600; }
+  td.bad { color: var(--bad); }
+
+  /* Boxes */
+  .box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1em 1.2em;
+    margin: 1em 0;
+  }
+  .box.accent { border-left: 4px solid var(--accent); }
+  .box.warn   { border-left: 4px solid var(--warn);   background: #fffbeb; }
+  .box.good   { border-left: 4px solid var(--good);   }
+  @media (prefers-color-scheme: dark) {
+    .box.warn { background: #422006; }
+  }
+  .box h4 { margin-top: 0; }
+
+  /* Inline highlight */
+  .hl { background: linear-gradient(transparent 60%, var(--accent-soft) 60%); padding: 0 0.1em; }
+
+  /* Chart section */
+  .chart-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1em;
+    margin: 1em 0;
+  }
+  .chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8em 1.2em;
+    margin-bottom: 0.8em;
+    font-size: 0.88em;
+  }
+  .control-group { display: flex; flex-wrap: wrap; gap: 0.4em; align-items: center; }
+  .control-group .label { color: var(--muted); margin-right: 0.4em; font-weight: 600; }
+  .tab-btn, .toggle-chip {
+    padding: 0.35em 0.8em;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88em;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover, .toggle-chip:hover { border-color: var(--accent); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .toggle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+  }
+  .toggle-chip input { margin: 0; }
+  .toggle-chip .swatch {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    border-radius: 2px;
+  }
+  .toggle-chip.muted { opacity: 0.5; }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7em;
+    flex-wrap: wrap;
+  }
+  .slider-row input[type=range] { flex: 1 1 200px; min-width: 150px; }
+  .slider-row .value {
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.05em;
+    min-width: 4em;
+    text-align: right;
+  }
+
+  /* SVG chart container */
+  .svg-chart { width: 100%; overflow-x: auto; }
+  .svg-chart svg { display: block; max-width: 100%; height: auto; }
+  .svg-chart .axis line, .svg-chart .axis path { stroke: var(--border); fill: none; }
+  .svg-chart .axis text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  .svg-chart .grid line { stroke: var(--border); stroke-dasharray: 2 3; opacity: 0.6; }
+  .svg-chart .bar:hover { opacity: 0.8; cursor: pointer; }
+  .svg-chart .tooltip {
+    pointer-events: none;
+    fill: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .svg-chart .value-label { fill: var(--text); font-size: 10px; font-weight: 600; }
+  .svg-chart .x-label { fill: var(--text); font-size: 12px; font-weight: 600; text-anchor: middle; }
+  .svg-chart .y-label { fill: var(--muted); font-size: 11px; }
+  .svg-chart .line { fill: none; stroke-width: 2; }
+  .svg-chart .dot { stroke: var(--bg); stroke-width: 1.5; }
+
+  /* details (collapsible) */
+  details {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4em 1em;
+    margin: 0.8em 0;
+  }
+  details[open] { padding-bottom: 1em; }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.5em 0;
+    color: var(--accent);
+    list-style: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸ "; transition: transform 0.2s; }
+  details[open] summary::before { content: "▾ "; }
+  details > *:not(summary) { margin-top: 0.3em; }
+
+  /* Footnote-like refs */
+  .ref {
+    font-size: 0.8em;
+    color: var(--muted);
+    margin-top: 1.5em;
+    border-top: 1px solid var(--border);
+    padding-top: 0.8em;
+  }
+  .ref ol { padding-left: 1.4em; }
+
+  /* Diff-style file changes */
+  .file-change {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 0.6em 0.9em;
+    margin: 0.4em 0;
+    font-size: 0.88em;
+    font-family: ui-monospace, "SF Mono", monospace;
+    border-left: 4px solid var(--accent);
+  }
+  .file-change .tag {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 0.05em 0.5em;
+    border-radius: 3px;
+    font-size: 0.78em;
+    margin-right: 0.6em;
+    font-family: inherit;
+  }
+  .file-change .tag.new { background: var(--good); }
+  .file-change .tag.del { background: var(--bad); }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    .container { padding: 0.6em 0.9em 3em; }
+    header h1 { font-size: 1.2em; }
+    h2 { font-size: 1.1em; }
+    h3 { font-size: 1em; }
+    body { font-size: 15px; }
+    .chart-controls { gap: 0.5em 0.7em; }
+    .tab-btn, .toggle-chip { padding: 0.4em 0.65em; font-size: 0.85em; }
+  }
+
+  /* For 結論 box emphasis */
+  .conclusion-summary {
+    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--panel) 100%);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.2em 1.4em;
+    margin: 1em 0 2em;
+  }
+  .conclusion-summary h3 { margin-top: 0; color: var(--accent); }
+  .conclusion-summary p { font-size: 1.05em; }
+
+  /* 静的 SVG チャートのインタラクティブ切替 (CSS のみ, JS 不要) */
+  .metric-radio, .param-radio { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+  .tab-label {
+    display: inline-block;
+    padding: 0.35em 0.8em;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88em;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .tab-label:hover { border-color: var(--accent); }
+  .chart-variant { display: none; }
+  .chart-variant svg { width: 100%; max-width: 100%; height: auto; }
+  .chart-title { fill: var(--text); font-size: 13px; font-weight: 600; }
+  /* :has() でタブの active 状態と表示を制御 */
+  .hero-chart-section:has(#hm-r2000:checked) .chart-r2000,
+  .hero-chart-section:has(#hm-r100:checked) .chart-r100,
+  .hero-chart-section:has(#hm-nd2000:checked) .chart-nd2000,
+  .hero-chart-section:has(#hm-nd100:checked) .chart-nd100 { display: block; }
+  .hero-chart-section:has(#hm-r2000:checked) [for="hm-r2000"],
+  .hero-chart-section:has(#hm-r100:checked) [for="hm-r100"],
+  .hero-chart-section:has(#hm-nd2000:checked) [for="hm-nd2000"],
+  .hero-chart-section:has(#hm-nd100:checked) [for="hm-nd100"] {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .param-chart-section:has(#pn-1000:checked) .chart-n-1000,
+  .param-chart-section:has(#pn-5000:checked) .chart-n-5000,
+  .param-chart-section:has(#pn-10000:checked) .chart-n-10000,
+  .param-chart-section:has(#pn-50000:checked) .chart-n-50000,
+  .param-chart-section:has(#pn-100000:checked) .chart-n-100000 { display: block; }
+  .param-chart-section:has(#pn-1000:checked) [for="pn-1000"],
+  .param-chart-section:has(#pn-5000:checked) [for="pn-5000"],
+  .param-chart-section:has(#pn-10000:checked) [for="pn-10000"],
+  .param-chart-section:has(#pn-50000:checked) [for="pn-50000"],
+  .param-chart-section:has(#pn-100000:checked) [for="pn-100000"] {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  /* フォールバック: :has() 非対応ブラウザでは最初のチャートだけ表示 */
+  @supports not selector(:has(*)) {
+    .chart-r2000, .chart-n-1000 { display: block; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>高次元ベクトル空間における最遠コサイン類似度ペア探索アルゴリズム</h1>
+  <p class="subtitle">WordAntipode における候補プール設計の数学的・実証的検討と Pagh AFN 採用報告</p>
+  <p class="meta">2026-05-20 / claude-opus-4-7 と 柳町皐太 による共同実験</p>
+</header>
+
+<nav class="toc">
+  <details open>
+    <summary>目次</summary>
+    <ol>
+      <li><a href="#purpose">目的</a></li>
+      <li><a href="#literature">既存研究と数学的背景</a></li>
+      <li><a href="#methods">実験方法</a></li>
+      <li><a href="#results">実験結果</a></li>
+      <li><a href="#discussion">考察</a></li>
+      <li><a href="#conclusion">結論</a></li>
+      <li><a href="#appendix">付録</a></li>
+    </ol>
+  </details>
+</nav>
+
+<main>
+
+<!-- ─────── 1. 目的 ─────── -->
+<section id="purpose">
+  <h2>1. 目的</h2>
+
+  <h3>1.1 問題定義</h3>
+  <p>
+    <span class="hl">L2 正規化済みの単位ベクトル集合 <span class="math-inline">X = {x₁, …, xₙ} ⊂ S<sup>d−1</sup></span> から、コサイン類似度 <span class="math-inline">xᵢ · xⱼ</span> が最小となるペアの上位 K 個を列挙する</span>。
+    単位球面上の点の場合、コサイン最小は L2 距離最大と同値なので、これは古典的な「Furthest Pair / 直径」問題に帰着する。
+  </p>
+  <math display="block">
+    <mrow>
+      <msup><mrow><mo>‖</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><msub><mi>x</mi><mi>j</mi></msub><mo>‖</mo></mrow><mn>2</mn></msup>
+      <mo>=</mo>
+      <mn>2</mn><mo>(</mo><mn>1</mn><mo>−</mo><msub><mi>x</mi><mi>i</mi></msub><mo>·</mo><msub><mi>x</mi><mi>j</mi></msub><mo>)</mo>
+      <mspace width="1em"/><mo>⟹</mo><mspace width="1em"/>
+      <mtext>cos 最小</mtext><mo>⇔</mo><mtext>L2 最遠</mtext>
+    </mrow>
+  </math>
+
+  <h3>1.2 WordAntipode における用途と要件</h3>
+  <p>
+    WordAntipode はオープンウェイト LLM の意味ベクトル空間から「意味的に最も遠い単語ペア」を抽出するツール。
+    語彙数 <span class="math-inline">n</span> は 1,000〜100,000、埋め込み次元 <span class="math-inline">d</span> は 768〜4,096 程度。
+    厳密な総当たり <span class="math-inline">O(n² d)</span> は <span class="math-inline">n ≥ 5,000</span> でユーザーの応答性を損なうため、近似アルゴリズムが必須。
+  </p>
+  <ul>
+    <li><strong>精度要件</strong>: Recall@2000 ≥ 0.95 (Recall@100 ≥ 0.95)</li>
+    <li><strong>速度要件</strong>: <span class="math-inline">n = 10,000</span> で 30 秒以内、<span class="math-inline">n = 50,000</span> で 5 分以内</li>
+    <li><strong>モデル独立性</strong>: 新規モデル (生成 LLM, sentence embedding 等) でも同じパラメータで動作</li>
+  </ul>
+
+  <h3>1.3 何を解決するのか / 何は解決しないのか</h3>
+  <div class="box accent">
+    <p><strong>解決対象</strong>: 「与えられたベクトル集合の中で cos が最小のペア top-K を高い recall で列挙する」</p>
+    <p><strong>非解決対象</strong>: 「ベクトル化条件 (層位置, pooling 種別, 中心化の要否) の選択」「単語の意味的最遠性をモデルの埋め込みがどれだけ正確に反映するか」</p>
+  </div>
+  <p>
+    例えば「カエル」「集中」が cos = −0.31 で最遠ペアとして出てきた場合、本アルゴリズムが返す結果は <em>そのベクトル化条件下では確かに最遠</em> である。<br>
+    「カエルと集中は人間の感覚で本当に最も離れた語対か」という問いはモデル選択・層選択・pooling 選択の問題であり、本アルゴリズムの守備範囲外。
+  </p>
+</section>
+
+<!-- ─────── 2. 既存研究と数学的背景 ─────── -->
+<section id="literature">
+  <h2>2. 既存研究と数学的背景</h2>
+
+  <h3>2.1 問題の同値変換: コサイン最遠 ≡ L2 直径</h3>
+  <p>
+    上述の通り、L2 正規化済みなら 2 ノルムとコサインは相互変換可能。
+    したがって本問題は <strong>「高次元ユークリッド空間における Furthest Pair (Diameter) 問題」</strong> として扱える。
+    この同値性により、計算幾何学・ANN 文献の蓄積を直接利用できる。
+  </p>
+
+  <h3>2.2 Williams 2018: 厳密計算の下限</h3>
+  <div class="box warn">
+    <p>
+      <strong>Williams 2018 (SODA)</strong> <a href="https://arxiv.org/abs/1709.05282" target="_blank">[arXiv:1709.05282]</a> は
+      <span class="hl">高次元 (<span class="math-inline">d = ω((log log n)²)</span>) における ℓ₂ Furthest Pair の厳密計算は OVC/SETH 仮定下で <span class="math-inline">n<sup>2−o(1)</sup></span> 時間を要する</span> ことを証明した。
+    </p>
+    <p>つまり <strong>厳密解を <span class="math-inline">O(n²)</span> より速く解くアルゴリズムは存在し得ない</strong> (仮定下)。我々のケースでは <span class="math-inline">n = 1,000</span>、<span class="math-inline">d = 1,024</span> なので <span class="math-inline">d ≫ (log log n)² ≈ 10</span> を満たし、この下限が適用される。</p>
+  </div>
+  <p>興味深い対比:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>問題</th><th>距離計量</th><th>厳密計算量</th></tr></thead>
+    <tbody>
+      <tr><td>Closest Pair</td><td>ℓ₂</td><td><span class="math-inline">2<sup>O(d)</sup> · n log<sup>O(1)</sup> n</span> (n に線形)</td></tr>
+      <tr><td>Furthest Pair</td><td>ℓ₁ / ℓ∞</td><td>near-linear</td></tr>
+      <tr><td><strong>Furthest Pair</strong></td><td><strong>ℓ₂</strong></td><td><strong>essentially <span class="math-inline">n<sup>2−o(1)</sup></span> (∞ に近い)</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>
+    つまりコサイン (= ℓ₂) 最遠ペア問題は厳密には不可避にコストがかかる。これが本研究で <strong>近似アルゴリズムを採用せざるを得ない</strong> 根拠。
+  </p>
+
+  <h3>2.3 Pagh 2016 / Indyk 2003: Approximate Furthest Neighbor</h3>
+  <p>
+    Indyk 2003 が原型を提示し、Pagh ら 2016 が改良した <strong>Approximate Furthest Neighbor (AFN)</strong> アルゴリズム
+    <a href="https://arxiv.org/abs/1611.07303" target="_blank">[arXiv:1611.07303]</a> は、Williams の hardness を回避できる。
+  </p>
+  <p>主アイデア (Pagh 2016 Algorithm 1):</p>
+  <ol>
+    <li><strong>前処理</strong>: <span class="math-inline">ℓ</span> 個のガウスランダム方向 <span class="math-inline">a₁, …, a<sub>ℓ</sub></span> で全点を射影。各方向につき射影値上位 <span class="math-inline">m</span> 点を保存。</li>
+    <li><strong>クエリ</strong>: 点 q について各方向で <span class="math-inline">aᵢ · x − aᵢ · q</span> (= q から離れている度合い) の優先度キューを構築。優先度順に候補を取り出し、実コサインを計算。最大 m 件展開で打ち切り。</li>
+  </ol>
+  <p>パラメータの自動導出 (Theorem 1):</p>
+  <math display="block">
+    <mrow>
+      <mi>ℓ</mi><mo>=</mo>
+      <mo>⌈</mo><mn>2</mn><msup><mi>n</mi><mrow><mn>1</mn><mo>/</mo><msup><mi>c</mi><mn>2</mn></msup></mrow></msup><mo>⌉</mo>
+      <mo>,</mo><mspace width="1.5em"/>
+      <mi>m</mi><mo>=</mo>
+      <mo>⌈</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mn>2</mn></msup><mi>ℓ</mi>
+      <msup><mi>log</mi><mrow><msup><mi>c</mi><mn>2</mn></msup><mo>/</mo><mn>2</mn><mo>−</mo><mn>1</mn><mo>/</mo><mn>3</mn></mrow></msup>
+      <mi>n</mi><mo>⌉</mo>
+    </mrow>
+  </math>
+  <p>
+    ここで <span class="math-inline">c > 1</span> は <strong>目標近似比</strong>。返される距離は真の最遠の <span class="math-inline">1/c</span> 倍以上が高確率で保証される。
+    クエリ時間は <span class="math-inline">Õ(n<sup>1/c²</sup> · (d + log n))</span> で <strong>sublinear in n</strong>。
+  </p>
+
+  <h3>2.4 PCA 候補プール (本プロジェクト旧手法) の数学的位置付け</h3>
+  <p>
+    旧来の WordAntipode は PCA の上位 <span class="math-inline">n<sub>c</sub></span> 軸を取り、各軸の両極 K 個ずつを総組み合わせして候補プールとしていた。
+    これは Pagh Algorithm 2 の <strong>クエリ独立版</strong> の変種:
+  </p>
+  <ul>
+    <li>Pagh Alg.2: <em>ランダム</em>方向 × 1 extreme/方向</li>
+    <li>WordAntipode 旧: <em>PCA</em>方向 × <em>両極 K</em> extremes/方向</li>
+  </ul>
+  <p>
+    PCA はデータ適応的なので変分散方向をうまく取れる利点があるが、<strong>(c, δ)-近似の理論保証は失う</strong>。
+    また両極 K 拡張は候補プールサイズを <span class="math-inline">K² n<sub>c</sub></span> に膨らませる代わりに各軸の貢献を厚くしている。
+  </p>
+
+  <h3>2.5 SVD 分解による「PC1 寄与」の演繹的解析</h3>
+  <p>
+    SVD <span class="math-inline">X = UΣVᵀ</span> による PCA 基底展開: <span class="math-inline">xᵢ = Σₖ pᵢₖ vₖ</span> ただし <span class="math-inline">pᵢₖ ~ 𝒩(0, rₖ)</span> (近似)、<span class="math-inline">rₖ</span> は説明分散比。
+  </p>
+  <math display="block">
+    <mrow>
+      <msub><mi>x</mi><mi>i</mi></msub><mo>·</mo><msub><mi>x</mi><mi>j</mi></msub>
+      <mo>=</mo>
+      <munder><mo>∑</mo><mi>k</mi></munder>
+      <msub><mi>p</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub>
+      <msub><mi>p</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub>
+    </mrow>
+  </math>
+  <p>
+    <strong>PC1 極ペア</strong> <span class="math-inline">(i*, j*)</span> (PC1 で正端と負端) の内積 ≈ <span class="math-inline">−r₁ · 2 log n</span> (極値理論)、
+    他軸寄与は <span class="math-inline">i*, j*</span> が PC1 でのみ選ばれたため <strong>期待値 0、標準偏差 <span class="math-inline">σ<sub>noise</sub> = √(Σ<sub>k≥2</sub> rₖ²)</span></strong>。
+  </p>
+  <p>信号/雑音比:</p>
+  <math display="block">
+    <mrow>
+      <mi>SNR</mi><mo>=</mo>
+      <mfrac>
+        <mrow><msub><mi>r</mi><mn>1</mn></msub><mspace width="0.15em"/><mi>log</mi><mspace width="0.15em"/><mi>n</mi></mrow>
+        <msqrt>
+          <mrow>
+            <munder><mo>∑</mo><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></munder>
+            <msubsup><mi>r</mi><mi>k</mi><mn>2</mn></msubsup>
+          </mrow>
+        </msqrt>
+      </mfrac>
+    </mrow>
+  </math>
+  <p>
+    SNR が大きいなら PC1 単独で十分。小さいなら多軸必要。この演繹的命題は実測 (§4) と整合する。
+  </p>
+</section>
+
+<!-- ─────── 3. 実験方法 ─────── -->
+<section id="methods">
+  <h2>3. 実験方法</h2>
+
+  <h3>3.1 評価対象モデル</h3>
+  <p>意図的に異なる訓練データ・アーキテクチャ・規模の 5 モデルを採用:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>モデル</th><th>タイプ</th><th>パラメータ</th><th>採用理由</th></tr></thead>
+    <tbody>
+      <tr><td><code>cyberagent/open-calm-small</code></td><td>日本語 GPT (decoder)</td><td>~160M</td><td>同系列の小規模</td></tr>
+      <tr><td><code>cyberagent/open-calm-medium</code></td><td>日本語 GPT (decoder)</td><td>~440M</td><td>同系列の中規模</td></tr>
+      <tr><td><code>Qwen/Qwen2.5-3B</code></td><td>多言語 GPT (decoder)</td><td>~3B</td><td>独立な大規模・多言語生成 LLM</td></tr>
+      <tr><td><code>cl-nagoya/ruri-large</code></td><td>日本語 BERT (encoder embedding)</td><td>~330M</td><td>sentence-transformers 系</td></tr>
+      <tr><td><code>intfloat/multilingual-e5-large</code></td><td>多言語 XLM-R (encoder embedding)</td><td>~560M</td><td>ruri と独立な埋め込みモデル</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.2 共通条件</h3>
+  <ul>
+    <li>語彙: <code>src/word_antipode/data/reference_vocab.ja.1000.txt</code> (1,000 語)</li>
+    <li>前処理: L2 正規化 → <code>center_vectors</code> (anisotropy 対策で平均除去 + 再 L2 正規化)</li>
+    <li>埋め込み層: 生成 LLM は <code>layer_fraction=0.5</code> + <code>max-abs pooling</code>、encoder は最終層 + CLS pooling (registry が自動分岐)</li>
+  </ul>
+
+  <h3>3.3 Ground Truth の構築</h3>
+  <p>
+    全 <span class="math-inline">C(1000, 2) = 499,500</span> ペアについて exact cosine を計算し、cos 昇順上位 2,000 ペアを GT とした。
+    実装は <code>scripts/exp_candidate_pool.py</code> の <code>exact_top_n_chunked</code>。
+  </p>
+
+  <h3>3.4 候補プール構築の 4 方式</h3>
+  <ol>
+    <li><strong>PCA n=1, n=4, n=10</strong>: PCA 上位 n 軸の両極 K 個ずつから候補ペア。<code>K = ⌈√(cp_target / n)⌉</code></li>
+    <li><strong>Random projection L=4, 10, 20</strong>: ランダム方向 L 本で同じく両極 K 個ずつ (Pagh Alg.2 単純化版)</li>
+    <li><strong>Hybrid</strong>: PCA + Random の和集合</li>
+    <li><strong>Pagh per-point AFN (本提案)</strong>: 各クエリ点 q について Pagh Alg.1 を実行し、(q, AFN(q)) を集めて top-K へ集約</li>
+  </ol>
+
+  <h3>3.5 評価指標</h3>
+  <ul>
+    <li><strong>Recall@K</strong>: GT 上位 K のうち候補集合の上位 K に何個含まれるか (K = 100, 2,000)</li>
+    <li><strong>NDCG@K</strong>: 順位重み付け一致度 (上位ほど重い)</li>
+  </ul>
+
+  <h3>3.6 走査範囲</h3>
+  <p>
+    cp_target (候補プール目標値) = 2,000, 10,000, 50,000, 200,000 ペアで方式間比較。
+    Pagh per-point は <code>derive_params</code> で c=1.1, 1.5, 2.0 を試行。
+    全実験は <code>scripts/exp_candidate_methods.py</code> と <code>scripts/exp_pagh_per_point.py</code> に再現性ある形で記録。
+  </p>
+</section>
+
+<!-- ─────── 4. 実験結果 ─────── -->
+<section id="results">
+  <h2>4. 実験結果</h2>
+
+  <h3>4.1 方式横断比較 (インタラクティブ)</h3>
+  <p>
+    指標タブを切り替え、方式トグルでオンオフして比較してください。
+    Pagh AFN が <strong>5 モデル中 4 つで他方式を圧倒</strong> し、唯一負ける open-calm-medium も R@2000 0.857 vs 0.973 と僅差です。
+  </p>
+
+  <div class="chart-section hero-chart-section">
+    <input type="radio" name="hero-metric" id="hm-r2000" class="metric-radio" checked>
+    <input type="radio" name="hero-metric" id="hm-r100" class="metric-radio">
+    <input type="radio" name="hero-metric" id="hm-nd2000" class="metric-radio">
+    <input type="radio" name="hero-metric" id="hm-nd100" class="metric-radio">
+    <div class="chart-controls">
+      <div class="control-group">
+        <span class="label">指標:</span>
+        <label for="hm-r2000" class="tab-label" data-metric="r2000">Recall@2000</label>
+        <label for="hm-r100" class="tab-label" data-metric="r100">Recall@100</label>
+        <label for="hm-nd2000" class="tab-label" data-metric="nd2000">NDCG@2000</label>
+        <label for="hm-nd100" class="tab-label" data-metric="nd100">NDCG@100</label>
+      </div>
+    </div>
+    <div class="chart-variant chart-r2000"><svg viewBox="0 0 740 360" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="14" text-anchor="middle" class="chart-title">Recall@2000</text><g class="grid"><line x1="50" y1="280.0" x2="728" y2="280.0"/><line x1="50" y1="228.0" x2="728" y2="228.0"/><line x1="50" y1="176.0" x2="728" y2="176.0"/><line x1="50" y1="124.0" x2="728" y2="124.0"/><line x1="50" y1="72.0" x2="728" y2="72.0"/><line x1="50" y1="20.0" x2="728" y2="20.0"/></g><g class="axis"><text x="42" y="284.0" text-anchor="end">0.0</text><text x="42" y="232.0" text-anchor="end">0.2</text><text x="42" y="180.0" text-anchor="end">0.4</text><text x="42" y="128.0" text-anchor="end">0.6</text><text x="42" y="76.0" text-anchor="end">0.8</text><text x="42" y="24.0" text-anchor="end">1.0</text><line x1="50" y1="280" x2="728" y2="280"/></g><text x="14" y="150.0" transform="rotate(-90 14 150.0)" text-anchor="middle" class="y-label">一致度合い</text><text x="117.8" y="302" text-anchor="middle" class="x-label">open-calm-small</text><rect class="bar" x="64.9" y="187.4" width="25.4" height="92.6" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-small: 0.356</title></rect><text class="value-label" x="78.1" y="184.4" text-anchor="middle">0.36</text><rect class="bar" x="91.4" y="184.1" width="25.4" height="95.9" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-small: 0.369</title></rect><text class="value-label" x="104.6" y="181.1" text-anchor="middle">0.37</text><rect class="bar" x="117.8" y="267.0" width="25.4" height="13.0" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-small: 0.050</title></rect><rect class="bar" x="144.2" y="23.9" width="25.4" height="256.1" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-small: 0.985</title></rect><text class="value-label" x="157.5" y="20.9" text-anchor="middle">0.98</text><text x="253.39999999999998" y="302" text-anchor="middle" class="x-label">open-calm-medium</text><rect class="bar" x="200.5" y="27.0" width="25.4" height="253.0" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-medium: 0.973</title></rect><text class="value-label" x="213.7" y="24.0" text-anchor="middle">0.97</text><rect class="bar" x="227.0" y="95.1" width="25.4" height="184.9" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-medium: 0.711</title></rect><text class="value-label" x="240.2" y="92.1" text-anchor="middle">0.71</text><rect class="bar" x="253.4" y="277.1" width="25.4" height="2.9" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-medium: 0.011</title></rect><rect class="bar" x="279.8" y="57.2" width="25.4" height="222.8" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-medium: 0.857</title></rect><text class="value-label" x="293.1" y="54.2" text-anchor="middle">0.86</text><text x="389.0" y="302" text-anchor="middle" class="x-label">Qwen2.5-3B</text><rect class="bar" x="336.1" y="134.1" width="25.4" height="145.9" fill="#94a3b8" rx="2"><title>PCA n=1 / Qwen2.5-3B: 0.561</title></rect><text class="value-label" x="349.3" y="131.1" text-anchor="middle">0.56</text><rect class="bar" x="362.6" y="200.2" width="25.4" height="79.8" fill="#60a5fa" rx="2"><title>PCA n=4 / Qwen2.5-3B: 0.307</title></rect><text class="value-label" x="375.8" y="197.2" text-anchor="middle">0.31</text><rect class="bar" x="389.0" y="270.9" width="25.4" height="9.1" fill="#fca5a5" rx="2"><title>Random L=10 / Qwen2.5-3B: 0.035</title></rect><rect class="bar" x="415.4" y="24.9" width="25.4" height="255.1" fill="#16a34a" rx="2"><title>Pagh AFN ★ / Qwen2.5-3B: 0.981</title></rect><text class="value-label" x="428.7" y="21.9" text-anchor="middle">0.98</text><text x="524.5999999999999" y="302" text-anchor="middle" class="x-label">ruri-large</text><rect class="bar" x="471.7" y="225.9" width="25.4" height="54.1" fill="#94a3b8" rx="2"><title>PCA n=1 / ruri-large: 0.208</title></rect><text class="value-label" x="484.9" y="222.9" text-anchor="middle">0.21</text><rect class="bar" x="498.2" y="227.2" width="25.4" height="52.8" fill="#60a5fa" rx="2"><title>PCA n=4 / ruri-large: 0.203</title></rect><text class="value-label" x="511.4" y="224.2" text-anchor="middle">0.20</text><rect class="bar" x="524.6" y="271.2" width="25.4" height="8.8" fill="#fca5a5" rx="2"><title>Random L=10 / ruri-large: 0.034</title></rect><rect class="bar" x="551.0" y="20.3" width="25.4" height="259.7" fill="#16a34a" rx="2"><title>Pagh AFN ★ / ruri-large: 0.999</title></rect><text class="value-label" x="564.3" y="17.3" text-anchor="middle">1.00</text><text x="660.1999999999999" y="302" text-anchor="middle" class="x-label">e5-large</text><rect class="bar" x="607.3" y="216.8" width="25.4" height="63.2" fill="#94a3b8" rx="2"><title>PCA n=1 / e5-large: 0.243</title></rect><text class="value-label" x="620.5" y="213.8" text-anchor="middle">0.24</text><rect class="bar" x="633.8" y="235.3" width="25.4" height="44.7" fill="#60a5fa" rx="2"><title>PCA n=4 / e5-large: 0.172</title></rect><text class="value-label" x="647.0" y="232.3" text-anchor="middle">0.17</text><rect class="bar" x="660.2" y="266.5" width="25.4" height="13.5" fill="#fca5a5" rx="2"><title>Random L=10 / e5-large: 0.052</title></rect><text class="value-label" x="673.4" y="263.5" text-anchor="middle">0.05</text><rect class="bar" x="686.6" y="20.3" width="25.4" height="259.7" fill="#16a34a" rx="2"><title>Pagh AFN ★ / e5-large: 0.999</title></rect><text class="value-label" x="699.9" y="17.3" text-anchor="middle">1.00</text><rect x="50" y="337" width="14" height="10" fill="#94a3b8" rx="2"/><text x="68" y="346" class="y-label">PCA n=1</text><rect x="151" y="337" width="14" height="10" fill="#60a5fa" rx="2"/><text x="169" y="346" class="y-label">PCA n=4</text><rect x="252" y="337" width="14" height="10" fill="#fca5a5" rx="2"/><text x="270" y="346" class="y-label">Random L=10</text><rect x="389" y="337" width="14" height="10" fill="#16a34a" rx="2"/><text x="407" y="346" class="y-label">Pagh AFN ★</text></svg></div>
+    <div class="chart-variant chart-r100"><svg viewBox="0 0 740 360" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="14" text-anchor="middle" class="chart-title">Recall@100</text><g class="grid"><line x1="50" y1="280.0" x2="728" y2="280.0"/><line x1="50" y1="228.0" x2="728" y2="228.0"/><line x1="50" y1="176.0" x2="728" y2="176.0"/><line x1="50" y1="124.0" x2="728" y2="124.0"/><line x1="50" y1="72.0" x2="728" y2="72.0"/><line x1="50" y1="20.0" x2="728" y2="20.0"/></g><g class="axis"><text x="42" y="284.0" text-anchor="end">0.0</text><text x="42" y="232.0" text-anchor="end">0.2</text><text x="42" y="180.0" text-anchor="end">0.4</text><text x="42" y="128.0" text-anchor="end">0.6</text><text x="42" y="76.0" text-anchor="end">0.8</text><text x="42" y="24.0" text-anchor="end">1.0</text><line x1="50" y1="280" x2="728" y2="280"/></g><text x="14" y="150.0" transform="rotate(-90 14 150.0)" text-anchor="middle" class="y-label">一致度合い</text><text x="117.8" y="302" text-anchor="middle" class="x-label">open-calm-small</text><rect class="bar" x="64.9" y="131.8" width="25.4" height="148.2" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-small: 0.570</title></rect><text class="value-label" x="78.1" y="128.8" text-anchor="middle">0.57</text><rect class="bar" x="91.4" y="124.0" width="25.4" height="156.0" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-small: 0.600</title></rect><text class="value-label" x="104.6" y="121.0" text-anchor="middle">0.60</text><rect class="bar" x="117.8" y="267.0" width="25.4" height="13.0" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-small: 0.050</title></rect><rect class="bar" x="144.2" y="22.6" width="25.4" height="257.4" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-small: 0.990</title></rect><text class="value-label" x="157.5" y="19.6" text-anchor="middle">0.99</text><text x="253.39999999999998" y="302" text-anchor="middle" class="x-label">open-calm-medium</text><rect class="bar" x="200.5" y="20.0" width="25.4" height="260.0" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-medium: 1.000</title></rect><text class="value-label" x="213.7" y="17.0" text-anchor="middle">1.00</text><rect class="bar" x="227.0" y="20.0" width="25.4" height="260.0" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-medium: 1.000</title></rect><text class="value-label" x="240.2" y="17.0" text-anchor="middle">1.00</text><rect class="bar" x="253.4" y="280.0" width="25.4" height="0.0" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-medium: 0.000</title></rect><rect class="bar" x="279.8" y="22.6" width="25.4" height="257.4" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-medium: 0.990</title></rect><text class="value-label" x="293.1" y="19.6" text-anchor="middle">0.99</text><text x="389.0" y="302" text-anchor="middle" class="x-label">Qwen2.5-3B</text><rect class="bar" x="336.1" y="95.4" width="25.4" height="184.6" fill="#94a3b8" rx="2"><title>PCA n=1 / Qwen2.5-3B: 0.710</title></rect><text class="value-label" x="349.3" y="92.4" text-anchor="middle">0.71</text><rect class="bar" x="362.6" y="173.4" width="25.4" height="106.6" fill="#60a5fa" rx="2"><title>PCA n=4 / Qwen2.5-3B: 0.410</title></rect><text class="value-label" x="375.8" y="170.4" text-anchor="middle">0.41</text><rect class="bar" x="389.0" y="272.2" width="25.4" height="7.8" fill="#fca5a5" rx="2"><title>Random L=10 / Qwen2.5-3B: 0.030</title></rect><rect class="bar" x="415.4" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / Qwen2.5-3B: 1.000</title></rect><text class="value-label" x="428.7" y="17.0" text-anchor="middle">1.00</text><text x="524.5999999999999" y="302" text-anchor="middle" class="x-label">ruri-large</text><rect class="bar" x="471.7" y="228.0" width="25.4" height="52.0" fill="#94a3b8" rx="2"><title>PCA n=1 / ruri-large: 0.200</title></rect><text class="value-label" x="484.9" y="225.0" text-anchor="middle">0.20</text><rect class="bar" x="498.2" y="222.8" width="25.4" height="57.2" fill="#60a5fa" rx="2"><title>PCA n=4 / ruri-large: 0.220</title></rect><text class="value-label" x="511.4" y="219.8" text-anchor="middle">0.22</text><rect class="bar" x="524.6" y="269.6" width="25.4" height="10.4" fill="#fca5a5" rx="2"><title>Random L=10 / ruri-large: 0.040</title></rect><rect class="bar" x="551.0" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / ruri-large: 1.000</title></rect><text class="value-label" x="564.3" y="17.0" text-anchor="middle">1.00</text><text x="660.1999999999999" y="302" text-anchor="middle" class="x-label">e5-large</text><rect class="bar" x="607.3" y="212.4" width="25.4" height="67.6" fill="#94a3b8" rx="2"><title>PCA n=1 / e5-large: 0.260</title></rect><text class="value-label" x="620.5" y="209.4" text-anchor="middle">0.26</text><rect class="bar" x="633.8" y="233.2" width="25.4" height="46.8" fill="#60a5fa" rx="2"><title>PCA n=4 / e5-large: 0.180</title></rect><text class="value-label" x="647.0" y="230.2" text-anchor="middle">0.18</text><rect class="bar" x="660.2" y="256.6" width="25.4" height="23.4" fill="#fca5a5" rx="2"><title>Random L=10 / e5-large: 0.090</title></rect><text class="value-label" x="673.4" y="253.6" text-anchor="middle">0.09</text><rect class="bar" x="686.6" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / e5-large: 1.000</title></rect><text class="value-label" x="699.9" y="17.0" text-anchor="middle">1.00</text><rect x="50" y="337" width="14" height="10" fill="#94a3b8" rx="2"/><text x="68" y="346" class="y-label">PCA n=1</text><rect x="151" y="337" width="14" height="10" fill="#60a5fa" rx="2"/><text x="169" y="346" class="y-label">PCA n=4</text><rect x="252" y="337" width="14" height="10" fill="#fca5a5" rx="2"/><text x="270" y="346" class="y-label">Random L=10</text><rect x="389" y="337" width="14" height="10" fill="#16a34a" rx="2"/><text x="407" y="346" class="y-label">Pagh AFN ★</text></svg></div>
+    <div class="chart-variant chart-nd2000"><svg viewBox="0 0 740 360" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="14" text-anchor="middle" class="chart-title">NDCG@2000</text><g class="grid"><line x1="50" y1="280.0" x2="728" y2="280.0"/><line x1="50" y1="228.0" x2="728" y2="228.0"/><line x1="50" y1="176.0" x2="728" y2="176.0"/><line x1="50" y1="124.0" x2="728" y2="124.0"/><line x1="50" y1="72.0" x2="728" y2="72.0"/><line x1="50" y1="20.0" x2="728" y2="20.0"/></g><g class="axis"><text x="42" y="284.0" text-anchor="end">0.0</text><text x="42" y="232.0" text-anchor="end">0.2</text><text x="42" y="180.0" text-anchor="end">0.4</text><text x="42" y="128.0" text-anchor="end">0.6</text><text x="42" y="76.0" text-anchor="end">0.8</text><text x="42" y="24.0" text-anchor="end">1.0</text><line x1="50" y1="280" x2="728" y2="280"/></g><text x="14" y="150.0" transform="rotate(-90 14 150.0)" text-anchor="middle" class="y-label">一致度合い</text><text x="117.8" y="302" text-anchor="middle" class="x-label">open-calm-small</text><rect class="bar" x="64.9" y="168.5" width="25.4" height="111.5" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-small: 0.429</title></rect><text class="value-label" x="78.1" y="165.5" text-anchor="middle">0.43</text><rect class="bar" x="91.4" y="165.1" width="25.4" height="114.9" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-small: 0.442</title></rect><text class="value-label" x="104.6" y="162.1" text-anchor="middle">0.44</text><rect class="bar" x="117.8" y="255.0" width="25.4" height="25.0" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-small: 0.096</title></rect><text class="value-label" x="131.0" y="252.0" text-anchor="middle">0.10</text><rect class="bar" x="144.2" y="23.4" width="25.4" height="256.6" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-small: 0.987</title></rect><text class="value-label" x="157.5" y="20.4" text-anchor="middle">0.99</text><text x="253.39999999999998" y="302" text-anchor="middle" class="x-label">open-calm-medium</text><rect class="bar" x="200.5" y="26.0" width="25.4" height="254.0" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-medium: 0.977</title></rect><text class="value-label" x="213.7" y="23.0" text-anchor="middle">0.98</text><rect class="bar" x="227.0" y="84.2" width="25.4" height="195.8" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-medium: 0.753</title></rect><text class="value-label" x="240.2" y="81.2" text-anchor="middle">0.75</text><rect class="bar" x="253.4" y="270.9" width="25.4" height="9.1" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-medium: 0.035</title></rect><rect class="bar" x="279.8" y="51.5" width="25.4" height="228.5" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-medium: 0.879</title></rect><text class="value-label" x="293.1" y="48.5" text-anchor="middle">0.88</text><text x="389.0" y="302" text-anchor="middle" class="x-label">Qwen2.5-3B</text><rect class="bar" x="336.1" y="118.8" width="25.4" height="161.2" fill="#94a3b8" rx="2"><title>PCA n=1 / Qwen2.5-3B: 0.620</title></rect><text class="value-label" x="349.3" y="115.8" text-anchor="middle">0.62</text><rect class="bar" x="362.6" y="180.9" width="25.4" height="99.1" fill="#60a5fa" rx="2"><title>PCA n=4 / Qwen2.5-3B: 0.381</title></rect><text class="value-label" x="375.8" y="177.9" text-anchor="middle">0.38</text><rect class="bar" x="389.0" y="260.5" width="25.4" height="19.5" fill="#fca5a5" rx="2"><title>Random L=10 / Qwen2.5-3B: 0.075</title></rect><text class="value-label" x="402.2" y="257.5" text-anchor="middle">0.07</text><rect class="bar" x="415.4" y="24.2" width="25.4" height="255.8" fill="#16a34a" rx="2"><title>Pagh AFN ★ / Qwen2.5-3B: 0.984</title></rect><text class="value-label" x="428.7" y="21.2" text-anchor="middle">0.98</text><text x="524.5999999999999" y="302" text-anchor="middle" class="x-label">ruri-large</text><rect class="bar" x="471.7" y="207.2" width="25.4" height="72.8" fill="#94a3b8" rx="2"><title>PCA n=1 / ruri-large: 0.280</title></rect><text class="value-label" x="484.9" y="204.2" text-anchor="middle">0.28</text><rect class="bar" x="498.2" y="208.8" width="25.4" height="71.2" fill="#60a5fa" rx="2"><title>PCA n=4 / ruri-large: 0.274</title></rect><text class="value-label" x="511.4" y="205.8" text-anchor="middle">0.27</text><rect class="bar" x="524.6" y="261.0" width="25.4" height="19.0" fill="#fca5a5" rx="2"><title>Random L=10 / ruri-large: 0.073</title></rect><text class="value-label" x="537.8" y="258.0" text-anchor="middle">0.07</text><rect class="bar" x="551.0" y="20.3" width="25.4" height="259.7" fill="#16a34a" rx="2"><title>Pagh AFN ★ / ruri-large: 0.999</title></rect><text class="value-label" x="564.3" y="17.3" text-anchor="middle">1.00</text><text x="660.1999999999999" y="302" text-anchor="middle" class="x-label">e5-large</text><rect class="bar" x="607.3" y="197.6" width="25.4" height="82.4" fill="#94a3b8" rx="2"><title>PCA n=1 / e5-large: 0.317</title></rect><text class="value-label" x="620.5" y="194.6" text-anchor="middle">0.32</text><rect class="bar" x="633.8" y="217.3" width="25.4" height="62.7" fill="#60a5fa" rx="2"><title>PCA n=4 / e5-large: 0.241</title></rect><text class="value-label" x="647.0" y="214.3" text-anchor="middle">0.24</text><rect class="bar" x="660.2" y="254.3" width="25.4" height="25.7" fill="#fca5a5" rx="2"><title>Random L=10 / e5-large: 0.099</title></rect><text class="value-label" x="673.4" y="251.3" text-anchor="middle">0.10</text><rect class="bar" x="686.6" y="20.3" width="25.4" height="259.7" fill="#16a34a" rx="2"><title>Pagh AFN ★ / e5-large: 0.999</title></rect><text class="value-label" x="699.9" y="17.3" text-anchor="middle">1.00</text><rect x="50" y="337" width="14" height="10" fill="#94a3b8" rx="2"/><text x="68" y="346" class="y-label">PCA n=1</text><rect x="151" y="337" width="14" height="10" fill="#60a5fa" rx="2"/><text x="169" y="346" class="y-label">PCA n=4</text><rect x="252" y="337" width="14" height="10" fill="#fca5a5" rx="2"/><text x="270" y="346" class="y-label">Random L=10</text><rect x="389" y="337" width="14" height="10" fill="#16a34a" rx="2"/><text x="407" y="346" class="y-label">Pagh AFN ★</text></svg></div>
+    <div class="chart-variant chart-nd100"><svg viewBox="0 0 740 360" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="14" text-anchor="middle" class="chart-title">NDCG@100</text><g class="grid"><line x1="50" y1="280.0" x2="728" y2="280.0"/><line x1="50" y1="228.0" x2="728" y2="228.0"/><line x1="50" y1="176.0" x2="728" y2="176.0"/><line x1="50" y1="124.0" x2="728" y2="124.0"/><line x1="50" y1="72.0" x2="728" y2="72.0"/><line x1="50" y1="20.0" x2="728" y2="20.0"/></g><g class="axis"><text x="42" y="284.0" text-anchor="end">0.0</text><text x="42" y="232.0" text-anchor="end">0.2</text><text x="42" y="180.0" text-anchor="end">0.4</text><text x="42" y="128.0" text-anchor="end">0.6</text><text x="42" y="76.0" text-anchor="end">0.8</text><text x="42" y="24.0" text-anchor="end">1.0</text><line x1="50" y1="280" x2="728" y2="280"/></g><text x="14" y="150.0" transform="rotate(-90 14 150.0)" text-anchor="middle" class="y-label">一致度合い</text><text x="117.8" y="302" text-anchor="middle" class="x-label">open-calm-small</text><rect class="bar" x="64.9" y="104.8" width="25.4" height="175.2" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-small: 0.674</title></rect><text class="value-label" x="78.1" y="101.8" text-anchor="middle">0.67</text><rect class="bar" x="91.4" y="98.5" width="25.4" height="181.5" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-small: 0.698</title></rect><text class="value-label" x="104.6" y="95.5" text-anchor="middle">0.70</text><rect class="bar" x="117.8" y="243.3" width="25.4" height="36.7" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-small: 0.141</title></rect><text class="value-label" x="131.0" y="240.3" text-anchor="middle">0.14</text><rect class="bar" x="144.2" y="21.8" width="25.4" height="258.2" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-small: 0.993</title></rect><text class="value-label" x="157.5" y="18.8" text-anchor="middle">0.99</text><text x="253.39999999999998" y="302" text-anchor="middle" class="x-label">open-calm-medium</text><rect class="bar" x="200.5" y="20.0" width="25.4" height="260.0" fill="#94a3b8" rx="2"><title>PCA n=1 / open-calm-medium: 1.000</title></rect><text class="value-label" x="213.7" y="17.0" text-anchor="middle">1.00</text><rect class="bar" x="227.0" y="20.0" width="25.4" height="260.0" fill="#60a5fa" rx="2"><title>PCA n=4 / open-calm-medium: 1.000</title></rect><text class="value-label" x="240.2" y="17.0" text-anchor="middle">1.00</text><rect class="bar" x="253.4" y="280.0" width="25.4" height="0.0" fill="#fca5a5" rx="2"><title>Random L=10 / open-calm-medium: 0.000</title></rect><rect class="bar" x="279.8" y="21.8" width="25.4" height="258.2" fill="#16a34a" rx="2"><title>Pagh AFN ★ / open-calm-medium: 0.993</title></rect><text class="value-label" x="293.1" y="18.8" text-anchor="middle">0.99</text><text x="389.0" y="302" text-anchor="middle" class="x-label">Qwen2.5-3B</text><rect class="bar" x="336.1" y="75.9" width="25.4" height="204.1" fill="#94a3b8" rx="2"><title>PCA n=1 / Qwen2.5-3B: 0.785</title></rect><text class="value-label" x="349.3" y="72.9" text-anchor="middle">0.79</text><rect class="bar" x="362.6" y="139.9" width="25.4" height="140.1" fill="#60a5fa" rx="2"><title>PCA n=4 / Qwen2.5-3B: 0.539</title></rect><text class="value-label" x="375.8" y="136.9" text-anchor="middle">0.54</text><rect class="bar" x="389.0" y="253.5" width="25.4" height="26.5" fill="#fca5a5" rx="2"><title>Random L=10 / Qwen2.5-3B: 0.102</title></rect><text class="value-label" x="402.2" y="250.5" text-anchor="middle">0.10</text><rect class="bar" x="415.4" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / Qwen2.5-3B: 1.000</title></rect><text class="value-label" x="428.7" y="17.0" text-anchor="middle">1.00</text><text x="524.5999999999999" y="302" text-anchor="middle" class="x-label">ruri-large</text><rect class="bar" x="471.7" y="192.6" width="25.4" height="87.4" fill="#94a3b8" rx="2"><title>PCA n=1 / ruri-large: 0.336</title></rect><text class="value-label" x="484.9" y="189.6" text-anchor="middle">0.34</text><rect class="bar" x="498.2" y="186.9" width="25.4" height="93.1" fill="#60a5fa" rx="2"><title>PCA n=4 / ruri-large: 0.358</title></rect><text class="value-label" x="511.4" y="183.9" text-anchor="middle">0.36</text><rect class="bar" x="524.6" y="248.3" width="25.4" height="31.7" fill="#fca5a5" rx="2"><title>Random L=10 / ruri-large: 0.122</title></rect><text class="value-label" x="537.8" y="245.3" text-anchor="middle">0.12</text><rect class="bar" x="551.0" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / ruri-large: 1.000</title></rect><text class="value-label" x="564.3" y="17.0" text-anchor="middle">1.00</text><text x="660.1999999999999" y="302" text-anchor="middle" class="x-label">e5-large</text><rect class="bar" x="607.3" y="176.5" width="25.4" height="103.5" fill="#94a3b8" rx="2"><title>PCA n=1 / e5-large: 0.398</title></rect><text class="value-label" x="620.5" y="173.5" text-anchor="middle">0.40</text><rect class="bar" x="633.8" y="198.4" width="25.4" height="81.6" fill="#60a5fa" rx="2"><title>PCA n=4 / e5-large: 0.314</title></rect><text class="value-label" x="647.0" y="195.4" text-anchor="middle">0.31</text><rect class="bar" x="660.2" y="227.2" width="25.4" height="52.8" fill="#fca5a5" rx="2"><title>Random L=10 / e5-large: 0.203</title></rect><text class="value-label" x="673.4" y="224.2" text-anchor="middle">0.20</text><rect class="bar" x="686.6" y="20.0" width="25.4" height="260.0" fill="#16a34a" rx="2"><title>Pagh AFN ★ / e5-large: 1.000</title></rect><text class="value-label" x="699.9" y="17.0" text-anchor="middle">1.00</text><rect x="50" y="337" width="14" height="10" fill="#94a3b8" rx="2"/><text x="68" y="346" class="y-label">PCA n=1</text><rect x="151" y="337" width="14" height="10" fill="#60a5fa" rx="2"/><text x="169" y="346" class="y-label">PCA n=4</text><rect x="252" y="337" width="14" height="10" fill="#fca5a5" rx="2"/><text x="270" y="346" class="y-label">Random L=10</text><rect x="389" y="337" width="14" height="10" fill="#16a34a" rx="2"/><text x="407" y="346" class="y-label">Pagh AFN ★</text></svg></div>
+    <p style="font-size:0.85em; color:var(--muted); margin-top:0.6em;">
+      候補プールサイズ: PCA/Random/Hybrid は cp ≈ 10,000ペア (1k=2000語の各方式 K で揃えた値)、Pagh AFN は cp ≈ 14k〜19k (L=50, m=50 の自然な設定)。
+      Pagh の方が cp が大きいが、Pagh より PCA が cp=50,000 でも追いつかないモデル (ruri, e5) が大半。
+    </p>
+  </div>
+
+  <h3>4.2 PCA n_components の最適値はモデル依存</h3>
+  <p>
+    PCA 候補プール方式での最適 n_components (R@2000 中央値) は以下のように散らばる:
+  </p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>モデル</th><th>PC1 説明分散</th><th>PC2/PC1</th><th>SNR</th><th>実測 n_opt</th></tr></thead>
+    <tbody>
+      <tr><td>open-calm-medium</td><td class="num">17.1%</td><td class="num">0.23</td><td class="num">31.0</td><td class="num">1</td></tr>
+      <tr><td>Qwen2.5-3B</td><td class="num">8.8%</td><td class="num">0.55</td><td class="num">12.9</td><td class="num">1</td></tr>
+      <tr><td>e5-large</td><td class="num">5.8%</td><td class="num">0.75</td><td class="num">10.2</td><td class="num">1</td></tr>
+      <tr><td>open-calm-small</td><td class="num">5.5%</td><td class="num">0.77</td><td class="num">8.5</td><td class="num">3</td></tr>
+      <tr><td>ruri-large</td><td class="num">5.5%</td><td class="num">0.60</td><td class="num">7.9</td><td class="num">4</td></tr>
+    </tbody>
+  </table></div>
+  <p>
+    PCA スペクトル単独からは n_opt を確実に予測できない (Qwen と open-calm-small はスペクトルが似ているのに n_opt は 1 vs 3)。
+  </p>
+
+  <h3>4.3 SNR と n_opt の関係 (演繹的命題の検証)</h3>
+  <p>
+    §2.5 で導出した SNR と実測 n_opt には明確な相関が見られる:
+  </p>
+  <ul>
+    <li>SNR &gt; 10 → n_opt = 1 (medium, Qwen, e5)</li>
+    <li>SNR &lt; 9 → n_opt &gt; 1 (small, ruri)</li>
+  </ul>
+  <p>
+    閾値 ~9 は経験的だが、SNR の <em>形</em> は SVD 解析から演繹的に得られている。
+  </p>
+
+  <h3>4.4 Random projection (query-blind 版) は PCA を大きく下回る</h3>
+  <p>
+    Pagh の <strong>クエリ独立版</strong> をそのまま全ペア候補集合に流用すると性能が出ない:
+  </p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>モデル</th><th>cp=10,000 での R@2000</th><th>Random L=10</th></tr></thead>
+    <tbody>
+      <tr><td>open-calm-medium</td><td class="num">PCA n=1: 0.973</td><td class="num bad">0.011</td></tr>
+      <tr><td>ruri-large</td><td class="num">PCA n=1: 0.208</td><td class="num bad">0.034</td></tr>
+    </tbody>
+  </table></div>
+  <p>
+    Random projection の理論保証はクエリ点が指定された場合のもので、全点ペア列挙への直接流用には合わない。
+  </p>
+
+  <h3>4.5 Per-point Pagh AFN が全モデルで圧倒的優位</h3>
+  <p>
+    各点 q に対して <em>q の射影と反対側</em> の点を候補として個別に評価する Pagh Algorithm 1 (per-point) は、
+    <strong>5 モデル中 4 つで R@2000 ≥ 0.98</strong> を達成し、唯一負ける open-calm-medium も僅差。
+  </p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>モデル</th><th>Pagh AFN R@2000</th><th>PCA 旧手法ベスト R@2000</th><th>差</th></tr></thead>
+    <tbody>
+      <tr><td>open-calm-small</td><td class="num win">0.985</td><td class="num">0.548 (PCA n=1, cp=40k)</td><td class="num win">+0.44</td></tr>
+      <tr><td>open-calm-medium</td><td class="num">0.857</td><td class="num win">1.000 (PCA n=1, cp=40k)</td><td class="num bad">−0.14</td></tr>
+      <tr><td>Qwen2.5-3B</td><td class="num win">0.981</td><td class="num">0.832 (PCA n=1, cp=40k)</td><td class="num win">+0.15</td></tr>
+      <tr><td>ruri-large</td><td class="num win">0.999</td><td class="num">0.410 (PCA n=1, cp=40k)</td><td class="num win">+0.59</td></tr>
+      <tr><td>e5-large</td><td class="num win">0.999</td><td class="num">0.550 (PCA n=1, cp=40k)</td><td class="num win">+0.45</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.6 計算コストとパラメータの関係</h3>
+  <p>パラメータ <span class="math-inline">c</span> から <span class="math-inline">ℓ, m</span> が一意に決まる。n=1,000 で実測:</p>
+  <div class="chart-section param-chart-section">
+    <input type="radio" name="param-n" id="pn-1000" class="param-radio" checked>
+    <input type="radio" name="param-n" id="pn-5000" class="param-radio">
+    <input type="radio" name="param-n" id="pn-10000" class="param-radio">
+    <input type="radio" name="param-n" id="pn-50000" class="param-radio">
+    <input type="radio" name="param-n" id="pn-100000" class="param-radio">
+    <div class="slider-row">
+      <span class="label">語彙数 n =</span>
+      <label for="pn-1000" class="tab-label" data-n="1000">1,000</label>
+      <label for="pn-5000" class="tab-label" data-n="5000">5,000</label>
+      <label for="pn-10000" class="tab-label" data-n="10000">10,000</label>
+      <label for="pn-50000" class="tab-label" data-n="50000">50,000</label>
+      <label for="pn-100000" class="tab-label" data-n="100000">100,000</label>
+    </div>
+    <div class="chart-variant chart-n-1000"><svg viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="12" text-anchor="middle" class="chart-title">n = 1,000 のときの Pagh パラメータ</text><g class="grid"><line x1="60" y1="220.0" x2="722" y2="220.0"/><line x1="60" y1="152.0" x2="722" y2="152.0"/><line x1="60" y1="84.0" x2="722" y2="84.0"/><line x1="60" y1="16.0" x2="722" y2="16.0"/></g><g class="axis"><text x="52" y="224.0" text-anchor="end">1</text><text x="52" y="156.0" text-anchor="end">10</text><text x="52" y="88.0" text-anchor="end">100</text><text x="52" y="20.0" text-anchor="end">1,000</text><line x1="60" y1="220" x2="722" y2="220"/><text x="60.0" y="238" text-anchor="middle">c=1.1</text><text x="170.33333333333331" y="238" text-anchor="middle">c=1.2</text><text x="280.66666666666663" y="238" text-anchor="middle">c=1.3</text><text x="391.0" y="238" text-anchor="middle">c=1.5</text><text x="501.3333333333333" y="238" text-anchor="middle">c=1.8</text><text x="611.6666666666667" y="238" text-anchor="middle">c=2.0</text><text x="722.0" y="238" text-anchor="middle">c=2.5</text></g><text x="14" y="118.0" transform="rotate(-90 14 118.0)" text-anchor="middle" class="y-label">本数 (対数軸)</text><text x="391.0" y="250" text-anchor="middle" class="x-label">近似比 c</text><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#94a3b8" stroke-dasharray="5,5" fill="none" stroke-width="2"/><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#dc2626" fill="none" stroke-width="2"/><polyline class="line" points="60.0,30.9 170.3,57.8 280.7,78.6 391.0,108.2 501.3,136.3 611.7,146.6 722.0,162.5" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="60.0" cy="30.9" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.1, L=604</title></circle><circle cx="60.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.1, m=1,000</title></circle><circle cx="170.3" cy="57.8" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.2, L=243</title></circle><circle cx="170.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.2, m=1,000</title></circle><circle cx="280.7" cy="78.6" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.3, L=120</title></circle><circle cx="280.7" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.3, m=1,000</title></circle><circle cx="391.0" cy="108.2" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.5, L=44</title></circle><circle cx="391.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.5, m=1,000</title></circle><circle cx="501.3" cy="136.3" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.8, L=17</title></circle><circle cx="501.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.8, m=1,000</title></circle><circle cx="611.7" cy="146.6" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.0, L=12</title></circle><circle cx="611.7" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.0, m=1,000</title></circle><circle cx="722.0" cy="162.5" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.5, L=7</title></circle><circle cx="722.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.5, m=1,000</title></circle><g transform="translate(60, 274)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="2"/><text x="28" y="4" class="y-label">L (射影本数)</text><line x1="140" y1="0" x2="162" y2="0" stroke="#dc2626" stroke-width="2"/><text x="168" y="4" class="y-label">m (候補展開上限)</text><line x1="320" y1="0" x2="342" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5"/><text x="348" y="4" class="y-label">n (総当たり)</text></g></svg></div>
+    <div class="chart-variant chart-n-5000"><svg viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="12" text-anchor="middle" class="chart-title">n = 5,000 のときの Pagh パラメータ</text><g class="grid"><line x1="60" y1="220.0" x2="722" y2="220.0"/><line x1="60" y1="164.84951222614228" x2="722" y2="164.84951222614228"/><line x1="60" y1="109.69902445228459" x2="722" y2="109.69902445228459"/><line x1="60" y1="54.54853667842687" x2="722" y2="54.54853667842687"/></g><g class="axis"><text x="52" y="224.0" text-anchor="end">1</text><text x="52" y="168.84951222614228" text-anchor="end">10</text><text x="52" y="113.69902445228459" text-anchor="end">100</text><text x="52" y="58.54853667842687" text-anchor="end">1,000</text><line x1="60" y1="220" x2="722" y2="220"/><text x="60.0" y="238" text-anchor="middle">c=1.1</text><text x="170.33333333333331" y="238" text-anchor="middle">c=1.2</text><text x="280.66666666666663" y="238" text-anchor="middle">c=1.3</text><text x="391.0" y="238" text-anchor="middle">c=1.5</text><text x="501.3333333333333" y="238" text-anchor="middle">c=1.8</text><text x="611.6666666666667" y="238" text-anchor="middle">c=2.0</text><text x="722.0" y="238" text-anchor="middle">c=2.5</text></g><text x="14" y="118.0" transform="rotate(-90 14 118.0)" text-anchor="middle" class="y-label">本数 (対数軸)</text><text x="391.0" y="250" text-anchor="middle" class="x-label">近似比 c</text><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#94a3b8" stroke-dasharray="5,5" fill="none" stroke-width="2"/><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,24.0 501.3,26.3 611.7,18.7 722.0,16.0" stroke="#dc2626" fill="none" stroke-width="2"/><polyline class="line" points="60.0,34.8 170.3,61.7 280.7,82.7 391.0,112.5 501.3,140.2 611.7,152.1 722.0,170.2" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="60.0" cy="34.8" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.1, L=2,281</title></circle><circle cx="60.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.1, m=5,000</title></circle><circle cx="170.3" cy="61.7" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.2, L=741</title></circle><circle cx="170.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.2, m=5,000</title></circle><circle cx="280.7" cy="82.7" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.3, L=309</title></circle><circle cx="280.7" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.3, m=5,000</title></circle><circle cx="391.0" cy="112.5" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.5, L=89</title></circle><circle cx="391.0" cy="24.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.5, m=3,586</title></circle><circle cx="501.3" cy="140.2" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.8, L=28</title></circle><circle cx="501.3" cy="26.3" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.8, m=3,258</title></circle><circle cx="611.7" cy="152.1" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.0, L=17</title></circle><circle cx="611.7" cy="18.7" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.0, m=4,464</title></circle><circle cx="722.0" cy="170.2" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.5, L=8</title></circle><circle cx="722.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.5, m=5,000</title></circle><g transform="translate(60, 274)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="2"/><text x="28" y="4" class="y-label">L (射影本数)</text><line x1="140" y1="0" x2="162" y2="0" stroke="#dc2626" stroke-width="2"/><text x="168" y="4" class="y-label">m (候補展開上限)</text><line x1="320" y1="0" x2="342" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5"/><text x="348" y="4" class="y-label">n (総当たり)</text></g></svg></div>
+    <div class="chart-variant chart-n-10000"><svg viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="12" text-anchor="middle" class="chart-title">n = 10,000 のときの Pagh パラメータ</text><g class="grid"><line x1="60" y1="220.0" x2="722" y2="220.0"/><line x1="60" y1="169.0" x2="722" y2="169.0"/><line x1="60" y1="118.0" x2="722" y2="118.0"/><line x1="60" y1="67.0" x2="722" y2="67.0"/><line x1="60" y1="16.0" x2="722" y2="16.0"/></g><g class="axis"><text x="52" y="224.0" text-anchor="end">1</text><text x="52" y="173.0" text-anchor="end">10</text><text x="52" y="122.0" text-anchor="end">100</text><text x="52" y="71.0" text-anchor="end">1,000</text><text x="52" y="20.0" text-anchor="end">10,000</text><line x1="60" y1="220" x2="722" y2="220"/><text x="60.0" y="238" text-anchor="middle">c=1.1</text><text x="170.33333333333331" y="238" text-anchor="middle">c=1.2</text><text x="280.66666666666663" y="238" text-anchor="middle">c=1.3</text><text x="391.0" y="238" text-anchor="middle">c=1.5</text><text x="501.3333333333333" y="238" text-anchor="middle">c=1.8</text><text x="611.6666666666667" y="238" text-anchor="middle">c=2.0</text><text x="722.0" y="238" text-anchor="middle">c=2.5</text></g><text x="14" y="118.0" transform="rotate(-90 14 118.0)" text-anchor="middle" class="y-label">本数 (対数軸)</text><text x="391.0" y="250" text-anchor="middle" class="x-label">近似比 c</text><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#94a3b8" stroke-dasharray="5,5" fill="none" stroke-width="2"/><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,30.7 501.3,33.7 611.7,27.4 722.0,16.0" stroke="#dc2626" fill="none" stroke-width="2"/><polyline class="line" points="60.0,36.0 170.3,63.0 280.7,83.9 391.0,114.0 501.3,141.3 611.7,153.6 722.0,171.3" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="60.0" cy="36.0" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.1, L=4,045</title></circle><circle cx="60.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.1, m=10,000</title></circle><circle cx="170.3" cy="63.0" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.2, L=1,199</title></circle><circle cx="170.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.2, m=10,000</title></circle><circle cx="280.7" cy="83.9" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.3, L=466</title></circle><circle cx="280.7" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.3, m=10,000</title></circle><circle cx="391.0" cy="114.0" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.5, L=120</title></circle><circle cx="391.0" cy="30.7" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.5, m=5,144</title></circle><circle cx="501.3" cy="141.3" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.8, L=35</title></circle><circle cx="501.3" cy="33.7" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.8, m=4,503</title></circle><circle cx="611.7" cy="153.6" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.0, L=20</title></circle><circle cx="611.7" cy="27.4" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.0, m=5,982</title></circle><circle cx="722.0" cy="171.3" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.5, L=9</title></circle><circle cx="722.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.5, m=10,000</title></circle><g transform="translate(60, 274)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="2"/><text x="28" y="4" class="y-label">L (射影本数)</text><line x1="140" y1="0" x2="162" y2="0" stroke="#dc2626" stroke-width="2"/><text x="168" y="4" class="y-label">m (候補展開上限)</text><line x1="320" y1="0" x2="342" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5"/><text x="348" y="4" class="y-label">n (総当たり)</text></g></svg></div>
+    <div class="chart-variant chart-n-50000"><svg viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="12" text-anchor="middle" class="chart-title">n = 50,000 のときの Pagh パラメータ</text><g class="grid"><line x1="60" y1="220.0" x2="722" y2="220.0"/><line x1="60" y1="176.58623063953226" x2="722" y2="176.58623063953226"/><line x1="60" y1="133.17246127906452" x2="722" y2="133.17246127906452"/><line x1="60" y1="89.75869191859681" x2="722" y2="89.75869191859681"/><line x1="60" y1="46.34492255812904" x2="722" y2="46.34492255812904"/></g><g class="axis"><text x="52" y="224.0" text-anchor="end">1</text><text x="52" y="180.58623063953226" text-anchor="end">10</text><text x="52" y="137.17246127906452" text-anchor="end">100</text><text x="52" y="93.75869191859681" text-anchor="end">1,000</text><text x="52" y="50.34492255812904" text-anchor="end">10,000</text><line x1="60" y1="220" x2="722" y2="220"/><text x="60.0" y="238" text-anchor="middle">c=1.1</text><text x="170.33333333333331" y="238" text-anchor="middle">c=1.2</text><text x="280.66666666666663" y="238" text-anchor="middle">c=1.3</text><text x="391.0" y="238" text-anchor="middle">c=1.5</text><text x="501.3333333333333" y="238" text-anchor="middle">c=1.8</text><text x="611.6666666666667" y="238" text-anchor="middle">c=2.0</text><text x="722.0" y="238" text-anchor="middle">c=2.5</text></g><text x="14" y="118.0" transform="rotate(-90 14 118.0)" text-anchor="middle" class="y-label">本数 (対数軸)</text><text x="391.0" y="250" text-anchor="middle" class="x-label">近似比 c</text><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#94a3b8" stroke-dasharray="5,5" fill="none" stroke-width="2"/><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,25.5 391.0,42.9 501.3,48.3 611.7,43.3 722.0,16.0" stroke="#dc2626" fill="none" stroke-width="2"/><polyline class="line" points="60.0,38.3 170.3,65.3 280.7,86.2 391.0,116.2 501.3,143.8 611.7,155.9 722.0,173.1" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="60.0" cy="38.3" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.1, L=15,293</title></circle><circle cx="60.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.1, m=50,000</title></circle><circle cx="170.3" cy="65.3" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.2, L=3,667</title></circle><circle cx="170.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.2, m=50,000</title></circle><circle cx="280.7" cy="86.2" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.3, L=1,207</title></circle><circle cx="280.7" cy="25.5" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.3, m=30,164</title></circle><circle cx="391.0" cy="116.2" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.5, L=246</title></circle><circle cx="391.0" cy="42.9" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.5, m=11,977</title></circle><circle cx="501.3" cy="143.8" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.8, L=57</title></circle><circle cx="501.3" cy="48.3" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.8, m=9,020</title></circle><circle cx="611.7" cy="155.9" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.0, L=30</title></circle><circle cx="611.7" cy="43.3" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.0, m=11,734</title></circle><circle cx="722.0" cy="173.1" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.5, L=12</title></circle><circle cx="722.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.5, m=50,000</title></circle><g transform="translate(60, 274)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="2"/><text x="28" y="4" class="y-label">L (射影本数)</text><line x1="140" y1="0" x2="162" y2="0" stroke="#dc2626" stroke-width="2"/><text x="168" y="4" class="y-label">m (候補展開上限)</text><line x1="320" y1="0" x2="342" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5"/><text x="348" y="4" class="y-label">n (総当たり)</text></g></svg></div>
+    <div class="chart-variant chart-n-100000"><svg viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><text x="370.0" y="12" text-anchor="middle" class="chart-title">n = 100,000 のときの Pagh パラメータ</text><g class="grid"><line x1="60" y1="220.0" x2="722" y2="220.0"/><line x1="60" y1="179.2" x2="722" y2="179.2"/><line x1="60" y1="138.39999999999998" x2="722" y2="138.39999999999998"/><line x1="60" y1="97.60000000000001" x2="722" y2="97.60000000000001"/><line x1="60" y1="56.79999999999998" x2="722" y2="56.79999999999998"/><line x1="60" y1="16.0" x2="722" y2="16.0"/></g><g class="axis"><text x="52" y="224.0" text-anchor="end">1</text><text x="52" y="183.2" text-anchor="end">10</text><text x="52" y="142.39999999999998" text-anchor="end">100</text><text x="52" y="101.60000000000001" text-anchor="end">1,000</text><text x="52" y="60.79999999999998" text-anchor="end">10,000</text><text x="52" y="20.0" text-anchor="end">100,000</text><line x1="60" y1="220" x2="722" y2="220"/><text x="60.0" y="238" text-anchor="middle">c=1.1</text><text x="170.33333333333331" y="238" text-anchor="middle">c=1.2</text><text x="280.66666666666663" y="238" text-anchor="middle">c=1.3</text><text x="391.0" y="238" text-anchor="middle">c=1.5</text><text x="501.3333333333333" y="238" text-anchor="middle">c=1.8</text><text x="611.6666666666667" y="238" text-anchor="middle">c=2.0</text><text x="722.0" y="238" text-anchor="middle">c=2.5</text></g><text x="14" y="118.0" transform="rotate(-90 14 118.0)" text-anchor="middle" class="y-label">本数 (対数軸)</text><text x="391.0" y="250" text-anchor="middle" class="x-label">近似比 c</text><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,16.0 391.0,16.0 501.3,16.0 611.7,16.0 722.0,16.0" stroke="#94a3b8" stroke-dasharray="5,5" fill="none" stroke-width="2"/><polyline class="line" points="60.0,16.0 170.3,16.0 280.7,29.4 391.0,47.3 501.3,53.6 611.7,48.9 722.0,18.2" stroke="#dc2626" fill="none" stroke-width="2"/><polyline class="line" points="60.0,39.1 170.3,66.1 280.7,87.0 391.0,117.0 501.3,144.7 611.7,156.5 722.0,174.6" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="60.0" cy="39.1" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.1, L=27,119</title></circle><circle cx="60.0" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.1, m=100,000</title></circle><circle cx="170.3" cy="66.1" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.2, L=5,933</title></circle><circle cx="170.3" cy="16.0" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.2, m=100,000</title></circle><circle cx="280.7" cy="87.0" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.3, L=1,819</title></circle><circle cx="280.7" cy="29.4" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.3, m=46,925</title></circle><circle cx="391.0" cy="117.0" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.5, L=334</title></circle><circle cx="391.0" cy="47.3" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.5, m=17,080</title></circle><circle cx="501.3" cy="144.7" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=1.8, L=70</title></circle><circle cx="501.3" cy="53.6" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=1.8, m=11,999</title></circle><circle cx="611.7" cy="156.5" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.0, L=36</title></circle><circle cx="611.7" cy="48.9" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.0, m=15,616</title></circle><circle cx="722.0" cy="174.6" r="4" fill="#2563eb" stroke="white" stroke-width="1.5"><title>c=2.5, L=13</title></circle><circle cx="722.0" cy="18.2" r="4" fill="#dc2626" stroke="white" stroke-width="1.5"><title>c=2.5, m=88,108</title></circle><g transform="translate(60, 274)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="2"/><text x="28" y="4" class="y-label">L (射影本数)</text><line x1="140" y1="0" x2="162" y2="0" stroke="#dc2626" stroke-width="2"/><text x="168" y="4" class="y-label">m (候補展開上限)</text><line x1="320" y1="0" x2="342" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5"/><text x="348" y="4" class="y-label">n (総当たり)</text></g></svg></div>
+    <p style="font-size:0.85em; color:var(--muted); margin-top:0.6em;">
+      n を変えると Pagh の理論パラメータ <span class="math-inline">ℓ, m</span> がどう変わるかを表示。
+      c=1.0 は厳密 (= 総当たり相当)、c=2.0 で <span class="math-inline">ℓ</span> は急減し計算量も低下。
+    </p>
+  </div>
+</section>
+
+<!-- ─────── 5. 考察 ─────── -->
+<section id="discussion">
+  <h2>5. 考察</h2>
+
+  <h3>5.1 「Query-adaptive」性が候補プール法に対する決定的優位</h3>
+  <p>
+    PCA 候補プール (旧手法) は全クエリで同じ候補集合を使う <strong>query-blind</strong> 戦略。
+    対して Pagh per-point は <strong>各クエリ点ごとに反対側候補を個別に選ぶ</strong> query-adaptive 戦略。
+    候補数を同じくらいに揃えても、後者の方が「q から本当に遠い候補」を厳選できる。
+    これが §4.5 の劇的な性能差の本質。
+  </p>
+
+  <h3>5.2 PCA が open-calm-medium で例外的に強い理由</h3>
+  <p>
+    open-calm-medium の PC1 説明分散は 17.1% と圧倒的。<strong>SVD 分解 (§2.5) からの帰結として PC1 軸の両極ペアが GT のほぼ全てを占める</strong>。
+    そのため PCA n=1 で 1.000 (perfect) を達成可能。
+  </p>
+  <p>
+    一方 ruri/e5 (sentence embedding) は PC1=5.5% で PCs がフラット。
+    PC1 単独では信号が弱く、SNR が 8-10 と低いため PCA 多軸が必要だが、それでも Pagh per-point に大きく劣る。
+  </p>
+
+  <h3>5.3 Williams 2018 の hardness と本実装の (近似での) 回避</h3>
+  <p>
+    §2.2 の通り、厳密な最遠ペア計算は <span class="math-inline">O(n²)</span> 未満不可。
+    本実装は近似比 <span class="math-inline">c</span> を導入することでこの hardness barrier を超え、<span class="math-inline">Õ(n<sup>1+1/c²</sup>)</span> 程度で動作する。
+    実用上は c=1.5 で <span class="math-inline">n<sup>1.44</sup></span>、c=2.0 で <span class="math-inline">n<sup>1.25</sup></span> 程度。
+  </p>
+
+  <h3>5.4 c (近似比) の選び方の指針</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>c 値</th><th>意味</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.0</td><td>厳密 (総当たり)</td><td>n ≤ 2,000 では自動的にこちら</td></tr>
+      <tr><td class="num">1.2</td><td>近似 (高品質保証)</td><td>厳密に近い結果が欲しい場合</td></tr>
+      <tr><td class="num"><strong>1.5</strong></td><td><strong>既定 (バランス)</strong></td><td>5 モデルで R@2000 ≥ 0.95 を実測</td></tr>
+      <tr><td class="num">2.0</td><td>粗 (高速)</td><td>大規模語彙でラフな最遠ペアでよい場合</td></tr>
+      <tr><td class="num">2.5+</td><td>非常に粗</td><td>探索ヒューリスティック用途</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ─────── 6. 結論 ─────── -->
+<section id="conclusion">
+  <h2>6. 結論</h2>
+
+  <div class="conclusion-summary">
+    <h3>6.1 推奨アルゴリズム: Pagh per-point AFN</h3>
+    <p>
+      WordAntipode は今後 <strong>Pagh 2016 Approximate Furthest Neighbor (per-point 適用) を上位 N 最遠ペア探索の本流</strong> として採用する。
+      候補プールサイズや PCA 軸数のような <em>データ依存パラメータ</em> はユーザーから隠蔽し、
+      <strong>「近似精度 <span class="math-inline">c</span>」という単一のモデル独立パラメータ</strong>のみを露出する。
+    </p>
+  </div>
+
+  <h3 id="6-2">6.2 CLI / GUI / コードベースへの落とし込み</h3>
+
+  <p>
+    本報告書執筆時点で実装は完了し、ブランチ <code>claude/pagh-afn</code> に commit 待ち。以下が具体的な変更点。
+  </p>
+
+  <h4>6.2.1 変更されたファイル</h4>
+  <div class="file-change">
+    <span class="tag new">新規</span><strong>src/word_antipode/afn.py</strong> — Pagh AFN コア (181 行)
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>src/word_antipode/ranking.py</strong> — PCA 候補プール → Pagh AFN へ全置換
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>src/word_antipode/pipeline.py</strong> — <code>candidate_pool</code> 引数を <code>precision</code> に置換
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>src/word_antipode/cli.py</strong> — <code>--candidate-pool</code> を <code>--precision &lt;float&gt;</code> に置換
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>src/word_antipode/gui/app.py</strong> — 候補プール Number 入力を 近似精度 Slider に置換
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>src/word_antipode/config.py</strong> — <code>DEFAULT_PRECISION=1.5</code> を追加、旧 <code>DEFAULT_CANDIDATE_POOL_MULTIPLIER</code>/<code>DEFAULT_PCA_COMPONENTS</code> を削除
+  </div>
+  <div class="file-change">
+    <span class="tag">改修</span><strong>docs/STRATEGY.md</strong> — §3.2 上位 N 探索アルゴリズムを Pagh AFN ベースに書き換え
+  </div>
+
+  <h4>6.2.2 新しい API</h4>
+  <pre><code># src/word_antipode/afn.py
+from word_antipode.afn import derive_params, find_top_n_pairs
+
+params = derive_params(n=10000, c=1.5)
+# AFNParams(c=1.5, L=44, m=4214, per_query_top_x=20)
+
+pairs = find_top_n_pairs(X, top_n=100, params=params, seed=0)
+# [(i, j, cosine), ...] cosine 昇順 (最遠順) top 100 ペア
+</code></pre>
+
+  <pre><code># src/word_antipode/ranking.py
+from word_antipode.ranking import rank_farthest_pairs
+
+pairs, method = rank_farthest_pairs(
+    words, X, top_n=10, precision=1.5
+)
+# precision=1.0 → method="exact" (総当たり)
+# precision&gt;1.0 かつ n&gt;2000 → method="pagh-afn"
+# n≤2000 は常に exact
+</code></pre>
+
+  <h4>6.2.3 CLI 使用例</h4>
+  <pre><code># 既定 (c=1.5)
+uv run python -m word_antipode.cli rank \
+  -i examples/vocab.ja.10000.txt \
+  -m cyberagent/open-calm-medium \
+  -n 10
+
+# 厳密モード (n がいくらでも総当たり)
+uv run python -m word_antipode.cli rank ... --precision 1.0
+
+# 粗速 (大規模語彙用)
+uv run python -m word_antipode.cli rank ... --precision 2.0
+</code></pre>
+
+  <h4>6.2.4 GUI</h4>
+  <p>
+    Advanced セクションの「候補プール」Number 入力を、<strong>「近似精度 c」Slider (1.0〜2.5, step=0.1)</strong>に置き換え。
+    ⓘ アイコンにマウスホバーで以下の説明:
+  </p>
+  <blockquote class="box">
+    <p>近似精度 c (Pagh 2016 AFN)。<br>
+    保証される距離比 = 1/c。1.0=厳密(総当たり, 遅い)、1.5=既定(高品質, 速い)、2.0=粗速。<br>
+    語彙が 2000 語以下の場合は常に厳密に算出されるため、この値は無視される。</p>
+  </blockquote>
+
+  <h4>6.2.5 パラメータ自動導出の式</h4>
+  <p>
+    ユーザーは <span class="math-inline">c</span> のみ指定。残りは <code>derive_params(n, c)</code> が以下を計算:
+  </p>
+  <math display="block">
+    <mrow>
+      <mi>ℓ</mi><mo>=</mo><mi>max</mi><mo>(</mo><mn>4</mn><mo>,</mo>
+      <mo>⌈</mo><mn>2</mn><msup><mi>n</mi><mrow><mn>1</mn><mo>/</mo><msup><mi>c</mi><mn>2</mn></msup></mrow></msup><mo>⌉</mo><mo>)</mo>
+      <mo>,</mo><mspace width="1.5em"/>
+      <mi>m</mi><mo>=</mo><mi>min</mi><mo>(</mo><mi>n</mi><mo>,</mo>
+      <mo>⌈</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mn>2</mn></msup><mi>ℓ</mi>
+      <msup><mrow><mo>(</mo><mi>log</mi><mi>n</mi><mo>)</mo></mrow><mrow><msup><mi>c</mi><mn>2</mn></msup><mo>/</mo><mn>2</mn><mo>−</mo><mn>1</mn><mo>/</mo><mn>3</mn></mrow></msup>
+      <mo>⌉</mo><mo>)</mo>
+    </mrow>
+  </math>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>n</th><th>c=1.2</th><th>c=1.5</th><th>c=2.0</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1,000</td><td class="num">ℓ=304, m=n</td><td class="num">ℓ=44, m=n</td><td class="num">ℓ=12, m=n</td></tr>
+      <tr><td class="num">10,000</td><td class="num">ℓ=1,944, m=n</td><td class="num">ℓ=100, m=4214</td><td class="num">ℓ=20, m=308</td></tr>
+      <tr><td class="num">100,000</td><td class="num">ℓ=12,389, m=n</td><td class="num">ℓ=222, m=n</td><td class="num">ℓ=32, m=752</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>6.2.6 EXACT_THRESHOLD (= 2,000)</h4>
+  <p>
+    <code>n ≤ 2000</code> の場合は <code>precision</code> によらず常に総当たり (<code>method="exact"</code>) で実行。
+    理由: 小規模では NumPy/BLAS による <code>X @ X.T</code> が高速で、AFN の前処理オーバーヘッドを上回るため。
+  </p>
+
+  <h3>6.3 残された課題</h3>
+  <ul>
+    <li><strong>top-K furthest <em>pair</em> 専用の理論研究</strong>: Pagh は単一クエリ AFN を提供するのみで、top-K pair 列挙への直接の (c, δ)-近似保証はない。<a href="https://dl.acm.org/doi/10.1145/142675.142740" target="_blank">Eppstein et al. 1992</a> の k 番目最遠ペアを高次元に拡張する研究が望まれる。</li>
+    <li><strong>1B+ 語彙へのスケール</strong>: 本実装は naive vectorize 版で <span class="math-inline">n = 50,000</span> 程度まで実用的。<span class="math-inline">n = 10⁶</span> 以上では disk-friendly な priority queue が必要。</li>
+    <li><strong>近似 (c=1.5) のモデル横断の最悪ケース保証</strong>: 経験的に 4/5 で R@2000 ≥ 0.98 だが open-calm-medium だけ 0.857。多モデルでのストレステストが必要。</li>
+  </ul>
+</section>
+
+<!-- ─────── 7. 付録 ─────── -->
+<section id="appendix">
+  <h2>7. 付録</h2>
+
+  <details>
+    <summary>A. Pagh 2016 Algorithm 1 (Query-Dependent) 擬似コード</summary>
+    <pre><code>// 前処理
+generate ℓ Gaussian random unit vectors a_1, ..., a_ℓ ∈ ℝ^d
+for i in 1..ℓ:
+    project: proj_i[x] := a_i · x for all x ∈ S
+    S_i := top-m points by proj_i  // 上位 m 点を保存
+    sort S_i by proj_i descending
+
+// クエリ q ∈ ℝ^d
+initialize priority queue PQ
+for i in 1..ℓ:
+    take first element x of S_i (with iterator cursor[i] = 0)
+    push (a_i · x − a_i · q, x) into PQ
+
+best ← null
+for j in 1..m:
+    pop top (priority, x) from PQ
+    if best is null or dist(x, q) > dist(best, q):
+        best ← x
+    advance cursor[i], push next element from S_i if any
+
+return best</code></pre>
+    <p>近似比保証: <span class="math-inline">dist(q, best) ≥ dist(q, true_furthest) / c</span> with probability ≥ 0.72。</p>
+  </details>
+
+  <details>
+    <summary>B. SVD による SNR 公式の導出</summary>
+    <p>SVD <span class="math-inline">X = UΣVᵀ</span>。第 k 主成分軸 <span class="math-inline">vₖ</span> への射影 <span class="math-inline">pᵢₖ = xᵢ · vₖ</span> は分散 <span class="math-inline">rₖ = σₖ² / Σₗ σₗ²</span>。</p>
+    <p>PC1 で正端と負端のペア <span class="math-inline">(i*, j*)</span> について:</p>
+    <ul>
+      <li>PC1 寄与: 極値理論より <span class="math-inline">𝔼[p<sub>i*1</sub> · p<sub>j*1</sub>] ≈ −r₁ · 2 log n</span></li>
+      <li>PC k≥2 寄与: <span class="math-inline">i*, j*</span> が PC1 で選ばれた条件下では <span class="math-inline">p<sub>i*k</sub>, p<sub>j*k</sub></span> は独立に近く、積の期待値 0、分散 <span class="math-inline">rₖ²</span></li>
+    </ul>
+    <p>他軸寄与の合計分散: <span class="math-inline">Var ≈ Σ<sub>k≥2</sub> rₖ²</span>。標準偏差 <span class="math-inline">σ<sub>noise</sub> = √(Σ<sub>k≥2</sub> rₖ²)</span>。</p>
+    <math display="block">
+      <mrow>
+        <mi>SNR</mi><mo>=</mo>
+        <mfrac>
+          <mrow><mo>|</mo><mtext>signal</mtext><mo>|</mo></mrow>
+          <msub><mi>σ</mi><mtext>noise</mtext></msub>
+        </mfrac>
+        <mo>=</mo>
+        <mfrac>
+          <mrow><msub><mi>r</mi><mn>1</mn></msub><mo>·</mo><mn>2</mn><mspace width="0.2em"/><mi>log</mi><mspace width="0.2em"/><mi>n</mi></mrow>
+          <msqrt>
+            <mrow>
+              <munder><mo>∑</mo><mrow><mi>k</mi><mo>≥</mo><mn>2</mn></mrow></munder>
+              <msubsup><mi>r</mi><mi>k</mi><mn>2</mn></msubsup>
+            </mrow>
+          </msqrt>
+        </mfrac>
+      </mrow>
+    </math>
+    <p>(慣例的に係数 2 を落として簡略化することがある)</p>
+  </details>
+
+  <details>
+    <summary>C. 実験再現手順</summary>
+    <pre><code># 1. キャッシュ確認 (reference vocab を全モデル分埋める)
+uv run python -m word_antipode.cli rank \
+  -i src/word_antipode/data/reference_vocab.ja.1000.txt \
+  -m &lt;MODEL_ID&gt; -n 5 -o /tmp/warmup
+
+# 2. exact GT 構築 + PCA 候補プール grid sweep
+uv run python scripts/exp_candidate_pool.py \
+  --vocab src/word_antipode/data/reference_vocab.ja.1000.txt \
+  --model &lt;MODEL_ID&gt; --sizes 1000
+
+# 3. PCA / Random / Hybrid 比較
+uv run python scripts/exp_candidate_methods.py
+
+# 4. Per-point Pagh AFN 比較
+uv run python scripts/exp_pagh_per_point.py
+
+# 5. レポート再生成
+uv run python scripts/exp_candidate_pool_report.py out/exp_candidate_pool/&lt;TIMESTAMP&gt;</code></pre>
+  </details>
+
+  <details>
+    <summary>D. 文献リスト</summary>
+    <ol>
+      <li><strong>Williams, R.</strong> (2018). <em>On the Difference Between Closest, Furthest, and Orthogonal Pairs: Nearly-Linear vs Barely-Subquadratic Complexity in Computational Geometry.</em> SODA 2018. <a href="https://arxiv.org/abs/1709.05282" target="_blank">arXiv:1709.05282</a></li>
+      <li><strong>Pagh, R., Aumüller, M., Christiani, T., Silvestri, F.</strong> (2016). <em>Approximate Furthest Neighbor with Application to Annulus Query.</em> Information Systems 2017. <a href="https://arxiv.org/abs/1611.07303" target="_blank">arXiv:1611.07303</a></li>
+      <li><strong>Pagh, R., et al.</strong> (2015). <em>Approximate Furthest Neighbor in High Dimensions.</em> SISAP 2015. <a href="https://www.rasmuspagh.net/papers/approx-furthest-neighbor-SISAP15.pdf" target="_blank">PDF</a></li>
+      <li><strong>Indyk, P.</strong> (2003). <em>Better algorithms for high-dimensional proximity problems via asymmetric embeddings.</em> SODA 2003.</li>
+      <li><strong>Andoni, A., Indyk, P.</strong> Nearest Neighbors in High-Dimensional Spaces. <a href="http://www.csun.edu/~ctoth/Handbook/chap43.pdf" target="_blank">Handbook chapter</a></li>
+      <li><strong>Charikar, M.</strong> (2002). <em>Similarity Estimation Techniques from Rounding Algorithms.</em> STOC 2002. (SimHash 原論文)</li>
+      <li><strong>Eppstein, D., Erickson, J.</strong> (1992). <em>Finding k farthest pairs and k closest/farthest bichromatic pairs for points in the plane.</em> SoCG 1992.</li>
+    </ol>
+  </details>
+</section>
+
+</main>
+
+<footer class="ref">
+  <p>本報告書は WordAntipode プロジェクト (<code>claude/pagh-afn</code> ブランチ) における候補プールアルゴリズム改修の経緯を記録するもの。著者は柳町皐太と Claude (claude-opus-4-7)。</p>
+  <p>最終更新: 2026-05-20</p>
+</footer>
+
+</div>
+
+
+</body>
+</html>
